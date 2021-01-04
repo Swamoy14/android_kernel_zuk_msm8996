@@ -3261,7 +3261,7 @@ static int wma_stats_event_handler(void *handle, u_int8_t *cmd_param_info,
 	} while (0);
 
 	if (excess_data ||
-	    (sizeof(*event) > WMA_SVC_MSG_MAX_SIZE - buf_len)) {
+	    (buf_len > WMA_SVC_MSG_MAX_SIZE - sizeof(*event))) {
 		WMA_LOGE("excess wmi buffer: stats pdev %d vdev %d peer %d",
 			event->num_pdev_stats, event->num_vdev_stats,
 			event->num_peer_stats);
@@ -5308,6 +5308,8 @@ static int wma_unified_radio_tx_power_level_stats_event_handler(void *handle,
 	uint8_t *tx_power_level_values;
 	tSirLLStatsResults *link_stats_results;
 	tSirWifiRadioStat *rs_results;
+	uint32_t max_total_num_tx_power_levels = MAX_TPC_LEVELS * NUM_OF_BANDS *
+						MAX_SPATIAL_STREAM_ANY;
 
 	tpAniSirGlobal pMac = (tpAniSirGlobal )vos_get_context(VOS_MODULE_ID_PE,
 				wma_handle->vos_context);
@@ -5347,6 +5349,20 @@ static int wma_unified_radio_tx_power_level_stats_event_handler(void *handle,
 		WMA_LOGE("%s: excess tx_power buffers:%d, num_tx_time_per_power_level:%d",
 			__func__, fixed_param->num_tx_power_levels,
 			param_tlvs->num_tx_time_per_power_level);
+		return -EINVAL;
+	}
+
+	if (fixed_param->radio_id >= link_stats_results->num_radio) {
+		WMA_LOGD("%s: Invalid radio_id %d num_radio %d",
+			__func__, fixed_param->radio_id,
+			link_stats_results->num_radio);
+		return -EINVAL;
+	}
+
+	if (fixed_param->total_num_tx_power_levels >
+	    max_total_num_tx_power_levels) {
+		WMA_LOGD("Invalid total_num_tx_power_levels %d",
+			fixed_param->total_num_tx_power_levels);
 		return -EINVAL;
 	}
 
